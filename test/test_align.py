@@ -27,7 +27,11 @@ def test_nw_backtrace():
     """
     seq3, _ = read_fasta("./data/test_seq3.fa")
     seq4, _ = read_fasta("./data/test_seq4.fa")
-    pass
+
+    # a gap penalty of -4 with BLOSUM62 should give a score of 18
+    nw = NeedlemanWunsch("substitution_matrices/BLOSUM62.mat", -4) #, -1)
+    score, a, b = nw.align(seq3, seq4)
+    assert score == 18.0
 
 
 

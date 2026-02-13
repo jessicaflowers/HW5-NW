@@ -26,16 +26,16 @@ class NeedlemanWunsch:
         gap_extend: float
             Gap extension penalty
     """
-    def __init__(self, sub_matrix_file: str, gap_open: float, gap_extend: float):
+    def __init__(self, sub_matrix_file: str, gap_open: float): #, gap_extend: float):
         # Init alignment and gap matrices
         self._align_matrix = None
-        self._gapA_matrix = None
-        self._gapB_matrix = None
+        # self._gapA_matrix = None
+        # self._gapB_matrix = None
 
         # Init matrices for backtrace procedure
         self._back = None
-        self._back_A = None
-        self._back_B = None
+        # self._back_A = None
+        # self._back_B = None
 
         # Init alignment_score
         self.alignment_score = 0
@@ -51,8 +51,8 @@ class NeedlemanWunsch:
         # Setting gap open and gap extension penalties
         self.gap_open = gap_open
         assert gap_open < 0, "Gap opening penalty must be negative."
-        self.gap_extend = gap_extend
-        assert gap_extend < 0, "Gap extension penalty must be negative."
+        # self.gap_extend = gap_extend
+        # assert gap_extend < 0, "Gap extension penalty must be negative." # i just wont use this for the linear gap penaty
 
         # Generating substitution matrix
         self.sub_dict = self._read_sub_matrix(sub_matrix_file) # substitution dictionary
@@ -126,14 +126,76 @@ class NeedlemanWunsch:
         self._seqA = seqA
         self._seqB = seqB
         
-        # TODO: Initialize matrix private attributes for use in alignment
-        # create matrices for alignment scores, gaps, and backtracing
-        pass
+        # linear gap penalty implementation of Needleman-Wunsch.
+        # i'll treat self.gap_open as the single gap penalty (a negative value).
+        gap = self.gap_open
 
-        
-        # TODO: Implement global alignment here
-        pass      		
-        		    
+        lenA = len(seqA)
+        lenB = len(seqB)
+
+        # matrix M to store the scores for aligning seqA and seqB
+        M = np.full((lenA + 1, lenB + 1), -np.inf)
+        # back tracer matrix: 0 = diag (match/mismatch), 1 = up (gap in seqB), 2 = left (gap in seqA)
+        back = np.full((lenA + 1, lenB + 1), -1, dtype=int)
+
+        # initialize
+        M[0, 0] = 0.0
+        back[0, 0] = 0
+        for i in range(1, lenA + 1):
+            M[i, 0] = gap * i # sets boundary conditions for 1st col of matrix
+            back[i, 0] = 1  # came from up, gap in seqB
+        for j in range(1, lenB + 1):
+            M[0, j] = gap * j # sets boundary conditions for 1st row of matrix
+            back[0, j] = 2  # came from left, gap in seqA
+
+        # fill in the matrix
+        for i in range(1, lenA + 1):
+            for j in range(1, lenB + 1):
+                a = seqA[i - 1]
+                b = seqB[j - 1]
+                sub_score = self.sub_dict[(a, b)] # substitution score for aligning a and b
+                # the score for M[i,j] can be calculated from 3 possible states
+                # 1. from the diagonal, indicating a match/mismatch between a and b
+                # 2. from up, indicating a gap in seqB
+                # 3. from left, indicating a gap in seqA
+                diag = M[i - 1, j - 1] + sub_score
+                up = M[i - 1, j] + gap
+                left = M[i, j - 1] + gap
+
+                # choose the highest score to fill in M[i, j]. if tie, choose the diagonal
+                # acording to these scores, also fill in the back tracer matrix using heuristic described above
+                best = diag
+                ptr = 0
+                if up > best:
+                    best = up
+                    ptr = 1
+                if left > best:
+                    best = left
+                    ptr = 2
+
+                M[i, j] = best
+                back[i, j] = ptr
+
+        # for compatibility with previous interface, create gap matrices showing
+        # the score that would result from choosing a gap at each cell
+        gapA = np.full((lenA + 1, lenB + 1), -np.inf)
+        gapB = np.full((lenA + 1, lenB + 1), -np.inf)
+        for i in range(1, lenA + 1):
+            for j in range(0, lenB + 1):
+                gapA[i, j] = M[i - 1, j] + gap
+        for i in range(0, lenA + 1):
+            for j in range(1, lenB + 1):
+                gapB[i, j] = M[i, j - 1] + gap
+
+        # save matrices
+        self._align_matrix = M
+        # self._gapA_matrix = gapA
+        # self._gapB_matrix = gapB
+        self._back = back
+        # self._back_A = None
+        # self._back_B = None
+
+        # store sequences and call backtrace
         return self._backtrace()
 
     def _backtrace(self) -> Tuple[float, str, str]:
@@ -150,7 +212,48 @@ class NeedlemanWunsch:
          	(alignment score, seqA alignment, seqB alignment) : Tuple[float, str, str]
          		the score and corresponding strings for the alignment of seqA and seqB
         """
-        pass
+        # i am going to walk back through the alignment matrix using the back tracer matrix
+        M = self._align_matrix
+        back = self._back
+
+        i = len(self._seqA)
+        j = len(self._seqB)
+
+        # alignment score initialized to 0, set it to the score from matrix M at the bottom right cell
+        self.alignment_score = M[i, j]
+
+        # initialize lists that i will store the aligned sequences in
+        alnA = []
+        alnB = []
+
+        while i > 0 or j > 0:
+            ptr = back[i, j]
+            if ptr == 0:
+                # back tracer element of 0 means i came from the diagonal direction
+                # in M, this corresponds to a match/mistmatch in seqA and seqB. ie [i-1] and [j-1]
+                alnA.append(self._seqA[i - 1])
+                alnB.append(self._seqB[j - 1])
+                i -= 1
+                j -= 1
+            elif ptr == 1:
+                # back tracer element of 1 means i came from the up direction 
+                # in M this corresponds to a gap in seqB. ie [i-1][j]
+                alnA.append(self._seqA[i - 1])
+                alnB.append('-')
+                i -= 1
+            elif ptr == 2:
+                # back tracer element of 2 means i came from the left direction
+                # in M this corresponds to a gap in seqA. ie [i][j-1]
+                alnA.append('-')
+                alnB.append(self._seqB[j - 1])
+                j -= 1
+            else:
+                # break if pointer not set
+                break
+
+        # need to reverse the aligned sequences since i built them from the end to the start
+        self.seqA_align = ''.join(reversed(alnA))
+        self.seqB_align = ''.join(reversed(alnB))
 
         return (self.alignment_score, self.seqA_align, self.seqB_align)
 
