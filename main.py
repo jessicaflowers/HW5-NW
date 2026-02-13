@@ -1,4 +1,3 @@
-# Import NeedlemanWunsch class and read_fasta function
 from align import read_fasta, NeedlemanWunsch
 
 def main():
@@ -13,7 +12,7 @@ def main():
     br_seq, br_header = read_fasta("./data/Balaeniceps_rex_BRD2.fa")
     tt_seq, tt_header = read_fasta("./data/tursiops_truncatus_BRD2.fa")
     # use BLOSUM62 and linear gap penalty of -10 (i dont use the gap_extend. i have a  linear gap penalty, but still put -1 bc i didnt get rid of the existing code)
-    nw = NeedlemanWunsch("substitution_matrices/BLOSUM62.mat", -10) #, -1)
+    nw = NeedlemanWunsch("substitution_matrices/BLOSUM62.mat", -10) 
 
     def get_species_name(header: str) -> str:
         start = header.index('OS=') + 3 # the name is between OS ans OX in the data files

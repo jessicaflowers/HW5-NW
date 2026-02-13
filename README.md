@@ -1,3 +1,6 @@
+[![BuildStatus](https://github.com/jessicaflowers/HW5-NW/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/jessicaflowers/HW5-NW/actions/workflows/test.yml)
+
+
 # Project 5
 Needleman Wunsch Algorithm
 
