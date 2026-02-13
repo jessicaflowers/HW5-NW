@@ -13,7 +13,33 @@ def test_nw_alignment():
     """
     seq1, _ = read_fasta("./data/test_seq1.fa")
     seq2, _ = read_fasta("./data/test_seq2.fa")
-    pass
+    # Use BLOSUM62 and a linear gap penalty of -10
+    nw = NeedlemanWunsch("substitution_matrices/BLOSUM62.mat", -10)
+    score, a, b = nw.align(seq1, seq2)
+
+    # expected alignment matrix 
+    expected_M = np.array([
+        [0.0, -10.0, -20.0, -30.0],
+        [-10.0, 5.0, -5.0, -15.0],
+        [-20.0, -5.0, 4.0, -6.0],
+        [-30.0, -15.0, 0.0, 5.0],
+        [-40.0, -25.0, -10.0, 5.0],
+    ])
+
+    # back traced matrix expected values 
+    expected_back = np.array([
+        [0, 2, 2, 2],
+        [1, 0, 2, 2],
+        [1, 1, 0, 2],
+        [1, 1, 0, 0],
+        [1, 1, 1, 0],
+    ], dtype=int)
+
+    # Compare matrices
+    assert nw._align_matrix.shape == expected_M.shape
+    np.testing.assert_allclose(nw._align_matrix, expected_M, atol=1e-6)
+    assert nw._back.shape == expected_back.shape
+    np.testing.assert_array_equal(nw._back, expected_back)
     
 
 def test_nw_backtrace():
@@ -31,7 +57,10 @@ def test_nw_backtrace():
     nw = NeedlemanWunsch("substitution_matrices/BLOSUM62.mat", -4)
     score, a, b = nw.align(seq3, seq4)
     assert score == 18.0
-
+    # expected alignments from README
+    assert a == "MAVHQLIRRP"
+    assert b == "M---QLIRHP"
+    
 
 
 

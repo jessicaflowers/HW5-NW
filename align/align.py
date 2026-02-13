@@ -34,7 +34,8 @@ class NeedlemanWunsch:
 
         # Init matrices for backtrace procedure
         self._back = None
-        # self._back_A = None
+        # i wont use this for the linear gap penaty
+        # self._back_A = None 
         # self._back_B = None
 
         # Init alignment_score
@@ -52,7 +53,7 @@ class NeedlemanWunsch:
         self.gap_open = gap_open
         assert gap_open < 0, "Gap opening penalty must be negative."
         # self.gap_extend = gap_extend
-        # assert gap_extend < 0, "Gap extension penalty must be negative." # i just wont use this for the linear gap penaty
+        # assert gap_extend < 0, "Gap extension penalty must be negative." 
 
         # Generating substitution matrix
         self.sub_dict = self._read_sub_matrix(sub_matrix_file) # substitution dictionary
@@ -127,7 +128,7 @@ class NeedlemanWunsch:
         self._seqB = seqB
         
         # linear gap penalty implementation of Needleman-Wunsch.
-        # i'll treat self.gap_open as the single gap penalty (a negative value).
+        # i'll treat self.gap_open as the single gap penalty (doing linear gap penalty)
         gap = self.gap_open
 
         lenA = len(seqA)
@@ -176,24 +177,9 @@ class NeedlemanWunsch:
                 M[i, j] = best
                 back[i, j] = ptr
 
-        # for compatibility with previous interface, create gap matrices showing
-        # the score that would result from choosing a gap at each cell
-        gapA = np.full((lenA + 1, lenB + 1), -np.inf)
-        gapB = np.full((lenA + 1, lenB + 1), -np.inf)
-        for i in range(1, lenA + 1):
-            for j in range(0, lenB + 1):
-                gapA[i, j] = M[i - 1, j] + gap
-        for i in range(0, lenA + 1):
-            for j in range(1, lenB + 1):
-                gapB[i, j] = M[i, j - 1] + gap
-
         # save matrices
         self._align_matrix = M
-        # self._gapA_matrix = gapA
-        # self._gapB_matrix = gapB
         self._back = back
-        # self._back_A = None
-        # self._back_B = None
 
         # store sequences and call backtrace
         return self._backtrace()
